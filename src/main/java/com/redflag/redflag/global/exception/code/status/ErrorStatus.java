@@ -21,7 +21,12 @@ public enum ErrorStatus implements BaseErrorCode {
     DASHBOARD_AGE_LATEST_DATA_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "DASHBOARD4002", "최근 연도 연령대 데이터를 찾을 수 없습니다."),
     DASHBOARD_GENDER_DATA_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "DASHBOARD4003", "성별 데이터를 가져올 수 없습니다."),
     DASHBOARD_GENDER_LATEST_DATA_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "DASHBOARD4004", "최근 연도 성별 데이터를 찾을 수 없습니다."),
-    DASHBOARD_EXTERNAL_API_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "DASHBOARD5001", "외부 API 조회에 실패했습니다.");
+    DASHBOARD_EXTERNAL_API_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "DASHBOARD5001", "외부 API 조회에 실패했습니다."),
+
+    // 보안 정보 관련 에러
+    SECURITY_NEWS_FETCH_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SECURITY5001", "보안 뉴스 조회에 실패했습니다."),
+    SECURITY_YOUTUBE_FETCH_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SECURITY5002", "유튜브 영상 조회에 실패했습니다."),
+    SECURITY_RSS_PARSE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SECURITY5003", "RSS 피드 파싱에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
