@@ -3,6 +3,7 @@ package com.redflag.redflag.securityinfo.service;
 import com.redflag.redflag.global.exception.GeneralException;
 import com.redflag.redflag.global.exception.code.status.ErrorStatus;
 import com.redflag.redflag.securityinfo.dto.response.SecurityInfoResponse;
+import com.redflag.redflag.securityinfo.dto.response.SecurityNewsListResponse;
 import com.redflag.redflag.securityinfo.dto.response.YoutubeApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,7 @@ public class SecurityInfoService {
     private final RestTemplate restTemplate;
 
     private static final int NEWS_LIMIT = 2;
+    private static final int NEWS_LIST_LIMIT = 10;
     private static final int VIDEO_LIMIT = 5;
 
     /**
@@ -53,6 +55,14 @@ public class SecurityInfoService {
         SecurityInfoResponse.YoutubeInfo youtubeInfo = getYoutubeInfo();
 
         return new SecurityInfoResponse(securityNews, youtubeInfo);
+    }
+
+    /**
+     * 보안 뉴스 목록 조회 (10건)
+     */
+    public SecurityNewsListResponse getSecurityNewsList() {
+        List<SecurityNewsListResponse.SecurityNews> newsList = getSecurityNewsWithLimit(NEWS_LIST_LIMIT);
+        return new SecurityNewsListResponse(newsList);
     }
 
     /**
@@ -111,6 +121,66 @@ public class SecurityInfoService {
             throw e;
         } catch (Exception e) {
             log.error("보안 뉴스 조회 실패", e);
+            throw new GeneralException(ErrorStatus.SECURITY_NEWS_FETCH_ERROR);
+        }
+    }
+
+    /**
+     * Google RSS에서 보안 뉴스 조회 (제한 개수 지정)
+     */
+    private List<SecurityNewsListResponse.SecurityNews> getSecurityNewsWithLimit(int limit) {
+        try {
+            List<SecurityNewsListResponse.SecurityNews> newsList = new ArrayList<>();
+
+            // RSS 피드 파싱
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+
+            URL url = new URL(rssUrl);
+            InputStream inputStream = url.openStream();
+            Document doc = builder.parse(inputStream);
+            doc.getDocumentElement().normalize();
+
+            // item 태그 추출
+            NodeList itemList = doc.getElementsByTagName("item");
+
+            int count = 0;
+            for (int i = 0; i < itemList.getLength() && count < limit; i++) {
+                Element item = (Element) itemList.item(i);
+
+                String title = getTagValue("title", item);
+                String link = getTagValue("link", item);
+                String pubDate = getTagValue("pubDate", item);
+                String description = getTagValue("description", item);
+
+                // 뉴스 소스 추출 (title에서 - 앞부분)
+                String source = extractSource(title);
+
+                // 날짜 포맷 변환 (RFC 822 -> yyyy.MM.dd)
+                String formattedDate = formatDate(pubDate);
+
+                // 요약문 정리 (HTML 태그 제거)
+                String summary = cleanHtml(description);
+
+                newsList.add(new SecurityNewsListResponse.SecurityNews(
+                        "news_" + String.format("%03d", i + 1),
+                        source,
+                        cleanTitle(title),
+                        summary,
+                        formattedDate,
+                        link
+                ));
+
+                count++;
+            }
+
+            inputStream.close();
+            return newsList;
+
+        } catch (GeneralException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("보안 뉴스 목록 조회 실패", e);
             throw new GeneralException(ErrorStatus.SECURITY_NEWS_FETCH_ERROR);
         }
     }

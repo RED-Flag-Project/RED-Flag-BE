@@ -3,6 +3,7 @@ package com.redflag.redflag.securityinfo.controller;
 import com.redflag.redflag.dashboard.dto.response.DashboardResponse;
 import com.redflag.redflag.global.response.ApiResponse;
 import com.redflag.redflag.securityinfo.dto.response.SecurityInfoResponse;
+import com.redflag.redflag.securityinfo.dto.response.SecurityNewsListResponse;
 import com.redflag.redflag.securityinfo.service.SecurityInfoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +31,16 @@ public class SecurityInfoController {
     @GetMapping
     public ResponseEntity<ApiResponse<SecurityInfoResponse>> getSecurityInfo() {
         SecurityInfoResponse response = securityInfoService.getSecurityInfo();
+        return ResponseEntity.ok(ApiResponse.onSuccess(response));
+    }
+
+    /**
+     * 보안 뉴스 목록 조회 (10건)
+     */
+    @Operation(summary = "보안 뉴스 목록 조회", description = "보안 뉴스 목록 10건을 조회합니다.")
+    @GetMapping("/security-news")
+    public ResponseEntity<ApiResponse<SecurityNewsListResponse>> getSecurityNewsList() {
+        SecurityNewsListResponse response = securityInfoService.getSecurityNewsList();
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
 }
