@@ -1,5 +1,6 @@
 package com.redflag.redflag.dashboard.service;
 
+import com.redflag.redflag.analysis.repository.AnalysisHistoryRepository;
 import com.redflag.redflag.dashboard.dto.response.AgeDistributionApiResponse;
 import com.redflag.redflag.dashboard.dto.response.DashboardResponse;
 import com.redflag.redflag.dashboard.dto.response.GenderDistributionApiResponse;
@@ -11,6 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Comparator;
 
 @Slf4j
@@ -28,11 +32,15 @@ public class DashboardService {
     private String genderDistributionUrl;
 
     private final RestTemplate restTemplate;
+    private final AnalysisHistoryRepository analysisHistoryRepository;
 
     /**
      * 대시보드
      */
     public DashboardResponse getDashboardData() {
+        // 오늘 탐지된 건수 조회
+        DashboardResponse.TodayDetection todayDetection = getTodayDetection();
+
         // 연령대별 데이터 조회
         DashboardResponse.AgeDistribution ageDistribution = getAgeDistribution();
 
@@ -43,10 +51,29 @@ public class DashboardService {
         DashboardResponse.TotalDamageStats totalDamageStats = createMockTotalDamageStats();
 
         return new DashboardResponse(
+                todayDetection,
                 totalDamageStats,
                 ageDistribution,
                 genderDistribution
         );
+    }
+
+    /**
+     * 오늘 탐지된 건수 조회 (riskScore >= 50)
+     */
+    private DashboardResponse.TodayDetection getTodayDetection() {
+        // 오늘 00:00:00 부터 내일 00:00:00 미만까지
+        LocalDateTime startOfToday = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+        LocalDateTime startOfTomorrow = LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIN);
+
+        // riskScore가 50 이상인 오늘의 탐지 건수 조회
+        Long todayDetectedCount = analysisHistoryRepository.countByRiskScoreGreaterThanEqualAndCreatedAtBetween(
+                50,
+                startOfToday,
+                startOfTomorrow
+        );
+        
+        return new DashboardResponse.TodayDetection(todayDetectedCount);
     }
 
     private DashboardResponse.AgeDistribution getAgeDistribution() {
@@ -64,17 +91,17 @@ public class DashboardService {
                     .orElseThrow(() -> new GeneralException(ErrorStatus.DASHBOARD_AGE_LATEST_DATA_NOT_FOUND));
 
             // 전체 합계 계산
-            int total = latestData.under20() + latestData.thirties() + latestData.forties()
-                    + latestData.fifties() + latestData.sixties() + latestData.over70();
+            int total = safeInt(latestData.under20()) + safeInt(latestData.thirties()) + safeInt(latestData.forties())
+            + safeInt(latestData.fifties()) + safeInt(latestData.sixties()) + safeInt(latestData.over70());
 
             // 비율 계산
             return new DashboardResponse.AgeDistribution(
-                    calculatePercentage(latestData.under20(), total),
-                    calculatePercentage(latestData.thirties(), total),
-                    calculatePercentage(latestData.forties(), total),
-                    calculatePercentage(latestData.fifties(), total),
-                    calculatePercentage(latestData.sixties(), total),
-                    calculatePercentage(latestData.over70(), total)
+                    calculatePercentage(safeInt(latestData.under20()), total),
+                    calculatePercentage(safeInt(latestData.thirties()), total),
+                    calculatePercentage(safeInt(latestData.forties()), total),
+                    calculatePercentage(safeInt(latestData.fifties()), total),
+                    calculatePercentage(safeInt(latestData.sixties()), total),
+                    calculatePercentage(safeInt(latestData.over70()), total)
             );
 
         } catch (GeneralException e) {
@@ -100,12 +127,12 @@ public class DashboardService {
                     .orElseThrow(() -> new GeneralException(ErrorStatus.DASHBOARD_GENDER_LATEST_DATA_NOT_FOUND));
 
             // 전체 합계 계산
-            int total = latestData.male() + latestData.female();
+            int total = safeInt(latestData.male()) + safeInt(latestData.female());
 
             // 비율 계산
             return new DashboardResponse.GenderDistribution(
-                    calculatePercentage(latestData.male(), total),
-                    calculatePercentage(latestData.female(), total)
+                    calculatePercentage(safeInt(latestData.male()), total),
+                    calculatePercentage(safeInt(latestData.female()), total)
             );
 
         } catch (GeneralException e) {
@@ -119,10 +146,10 @@ public class DashboardService {
     // 목데이터 생성 (1차)
     private DashboardResponse.TotalDamageStats createMockTotalDamageStats() {
         return new DashboardResponse.TotalDamageStats(
-                1_234_567_890_000L, // 1조 2345억
-                15.5, // 전년 대비 15.5% 증가
-                5_432_100L, // 543만원
-                85.3 // 하루 평균 85.3건
+                1_133_000_000_000L, // 1조 1330억
+                56.1,              // 전년 대비 56.1% 증가
+                18_676L,           // 총 발생 건수
+                15.6               // 전년 대비 발생 건수
         );
     }
 
@@ -132,5 +159,10 @@ public class DashboardService {
             return 0.0;
         }
         return Math.round((value * 100.0 / total) * 10.0) / 10.0; // 소수점 첫째자리까지
+    }
+
+    // safeInt 도입
+    private int safeInt(Integer value) {
+        return value == null ? 0 : value;
     }
 }
