@@ -38,7 +38,7 @@ public record SecurityInfoResponse(
             @Schema(description = "유튜브 채널 URL", example = "https://www.youtube.com/@polinlove")
             String channelUrl,
 
-            @Schema(description = "유튜브 영상 목록 (최대 2건)")
+            @Schema(description = "유튜브 영상 목록")
             List<YoutubeVideo> videos
     ) {}
 

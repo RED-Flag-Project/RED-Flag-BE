@@ -40,7 +40,7 @@ public class SecurityInfoService {
     private final RestTemplate restTemplate;
 
     private static final int NEWS_LIMIT = 2;
-    private static final int VIDEO_LIMIT = 2;
+    private static final int VIDEO_LIMIT = 5;
 
     /**
      * 보안 정보 조회
