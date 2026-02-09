@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -47,4 +49,9 @@ public class AnalysisHistory {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+    
+    // AnalysisDetail과의 관계
+    @OneToMany(mappedBy = "analysisHistory", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<AnalysisDetail> analysisDetails = new ArrayList<>();
 }

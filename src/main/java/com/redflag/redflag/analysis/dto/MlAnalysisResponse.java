@@ -31,6 +31,9 @@ public class MlAnalysisResponse {
     
     // 심리 조작 패턴 목록
     private List<PsychologicalPattern> psychologicalPatterns;
+
+    // 유사 사례 검색용 텍스트 임베딩 벡터
+    private float[] embedding;
     
     @Getter
     @Builder

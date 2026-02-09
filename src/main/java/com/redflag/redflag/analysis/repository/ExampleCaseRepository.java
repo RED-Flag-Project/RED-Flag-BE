@@ -12,12 +12,17 @@ import java.util.UUID;
 @Repository
 public interface ExampleCaseRepository extends JpaRepository<ExampleCase, UUID> {
     
-    // pgvector를 사용한 유사도 검색 (코사인 유사도 활용)
-    // embedding 컬럼과 주어진 벡터의 코사인 유사도를 계산하여 유사한 사례 검색
-    @Query(value = "SELECT * FROM example_case " +
-                   "ORDER BY embedding <=> CAST(:embedding AS vector) " +
+    // pgvector를 사용한 유사도 검색 (코사인 거리값 포함)
+    // embedding column과 주어진 벡터의 코사인 거리를 계산하여 유사한 사례 검색
+    // 반환값: [id, case_content, distance]
+    @Query(value = "SELECT " +
+                   "id, " +
+                   "case_content, " +
+                   "(embedding <=> CAST(:embedding AS vector)) as distance " +
+                   "FROM example_case " +
+                   "ORDER BY distance " +
                    "LIMIT :limit", 
            nativeQuery = true)
-    List<ExampleCase> findSimilarCases(@Param("embedding") String embedding, 
-                                       @Param("limit") int limit);
+    List<Object[]> findSimilarCasesWithDistance(@Param("embedding") String embedding, 
+                                                @Param("limit") int limit);
 }

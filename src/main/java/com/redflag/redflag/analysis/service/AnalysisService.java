@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -56,8 +58,11 @@ public class AnalysisService {
         saveAnalysisDetails(analysisHistory, mlResult.getPsychologicalPatterns());
         
         // 6. 벡터 유사도 검색 및 SpecificMatch 저장
-        // TODO: ML 결과에 embedding이 포함되면 구현
-        // searchAndSaveSimilarCases(analysisHistory, mlResult.getEmbedding());
+        if (mlResult.getEmbedding() != null && mlResult.getEmbedding().length > 0) {
+            searchAndSaveSimilarCases(analysisHistory, mlResult.getEmbedding());
+        } else {
+            log.warn("ML 응답에 임베딩이 없어 유사 사례 검색을 건너뜁니다.");
+        }
         
         log.info("분석 완료 - analysisId: {}", analysisHistory.getId());
         
@@ -138,44 +143,105 @@ public class AnalysisService {
     }
     
     // 벡터 유사도 검색 및 SpecificMatch 저장
-    // TODO: ML 결과에 embedding 포함되면 활성화
-    /*
     private void searchAndSaveSimilarCases(AnalysisHistory analysisHistory, float[] embedding) {
-        if (embedding == null || embedding.length == 0) {
-            log.warn("임베딩 벡터가 없습니다.");
+        log.info("유사 사례 검색 시작 - embedding 차원: {}", embedding.length);
+        
+        // 1. float[] → pgvector 문자열 형식으로 변환
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < embedding.length; i++) {
+            sb.append(embedding[i]);
+            if (i < embedding.length - 1) {
+                sb.append(",");
+            }
+        }
+        sb.append("]");
+        String embeddingStr = sb.toString();
+        
+        log.debug("변환된 임베딩 문자열: {}...", embeddingStr.substring(0, Math.min(50, embeddingStr.length())));
+        
+        // 2. pgvector로 유사한 과거 사례 검색 (상위 3개, 거리값 포함)
+        List<Object[]> results = exampleCaseRepository.findSimilarCasesWithDistance(embeddingStr, 3);
+        
+        if (results.isEmpty()) {
+            log.warn("유사 사례를 찾지 못했습니다. ExampleCase 테이블에 데이터가 있는지 확인하세요.");
             return;
         }
         
-        // pgvector 형식으로 변환 ("[0.1,0.2,0.3,...]")
-        String embeddingStr = Arrays.stream(embedding)
-                .mapToObj(String::valueOf)
-                .collect(Collectors.joining(",", "[", "]"));
+        log.info("유사 사례 검색 완료: {}개 발견", results.size());
         
-        // 유사한 사례 검색 (상위 5개)
-        List<ExampleCase> similarCases = exampleCaseRepository.findSimilarCases(embeddingStr, 5);
+        // AnalysisDetail 직접 조회 (LAZY 로딩 문제 해결)
+        List<AnalysisDetail> details = analysisDetailRepository.findByAnalysisHistory(analysisHistory);
+        log.debug("AnalysisDetail 조회 완료: {}개", details.size());
         
-        if (similarCases.isEmpty()) {
-            log.warn("유사 사례를 찾지 못했습니다.");
-            return;
+        // 3. 검색된 사례들을 SpecificMatch로 저장
+        List<SpecificMatch> matches = new ArrayList<>();
+        int rank = 1;
+        
+        for (Object[] row : results) {
+            UUID exampleId = (UUID) row[0];
+            String caseContent = (String) row[1];
+            Double distance = (Double) row[2];
+            Double similarity = 1.0 - distance;
+            
+            log.debug("매칭된 사례: ID={}, 거리={}, 유사도={}", 
+                    exampleId, 
+                    String.format("%.4f", distance),
+                    String.format("%.2f%%", similarity * 100));
+            
+            // highlightTextUser: AnalysisDetail의 detectedSentence 사용
+            String highlightUser = details.stream()
+                    .findFirst()
+                    .map(AnalysisDetail::getDetectedSentence)
+                    .orElse(null);
+            
+            // highlightTextCase: case_content에서 키워드 찾기
+            String highlightCase = extractHighlight(caseContent, details);
+            
+            ExampleCase exampleCaseRef = ExampleCase.builder()
+                    .id(exampleId)
+                    .build();
+            
+            SpecificMatch match = SpecificMatch.builder()
+                    .analysisHistory(analysisHistory)
+                    .exampleCase(exampleCaseRef)
+                    .similarityScore(BigDecimal.valueOf(similarity))
+                    .matchedRank(rank++)
+                    .highlightTextUser(highlightUser)
+                    .highlightTextCase(highlightCase)
+                    .build();
+            
+            matches.add(match);
         }
-        
-        // SpecificMatch 저장
-        List<SpecificMatch> matches = similarCases.stream()
-                .map(exampleCase -> SpecificMatch.builder()
-                        .analysisHistory(analysisHistory)
-                        .exampleCase(exampleCase)
-                        .similarity(calculateSimilarity(embedding, exampleCase.getEmbedding()))
-                        .build())
-                .toList();
         
         specificMatchRepository.saveAll(matches);
-        log.info("유사 사례 매칭 완료: {}개", matches.size());
+        log.info("유사 사례 매칭 완료: {}개 저장됨", matches.size());
     }
     
-    private Double calculateSimilarity(float[] embedding1, float[] embedding2) {
-        // 코사인 유사도 계산 로직
-        // TODO: 구현 필요
-        return 0.0;
+    // ExampleCase의 case_content에서 하이라이트할 텍스트 추출
+    private String extractHighlight(String caseContent, List<AnalysisDetail> details) {
+        // AnalysisDetail의 키워드 수집
+        List<String> keywords = details.stream()
+                .map(AnalysisDetail::getKeyword)
+                .filter(k -> k != null && !k.isEmpty())
+                .toList();
+        
+        if (keywords.isEmpty()) {
+            // 키워드 없으면 앞부분만
+            return caseContent.substring(0, Math.min(30, caseContent.length()));
+        }
+        
+        // caseContent에서 키워드 포함된 문장 찾기
+        for (String keyword : keywords) {
+            if (caseContent.contains(keyword)) {
+                // 키워드 포함된 부분 추출 (앞뒤 10자)
+                int idx = caseContent.indexOf(keyword);
+                int start = Math.max(0, idx - 10);
+                int end = Math.min(caseContent.length(), idx + keyword.length() + 10);
+                return caseContent.substring(start, end);
+            }
+        }
+        
+        // 매칭 안 되면 앞부분 30자
+        return caseContent.substring(0, Math.min(30, caseContent.length()));
     }
-    */
 }
