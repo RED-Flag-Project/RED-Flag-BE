@@ -8,6 +8,9 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(
@@ -21,8 +24,8 @@ import java.time.LocalDateTime;
 public class AnalysisHistory {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -40,10 +43,15 @@ public class AnalysisHistory {
     @Column(name = "risk_level", length = 255)
     private String riskLevel;
 
-    @Column(name = "summary", columnDefinition = "TEXT")
-    private String summary;
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+    
+    // AnalysisDetail과의 관계
+    @OneToMany(mappedBy = "analysisHistory", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<AnalysisDetail> analysisDetails = new ArrayList<>();
 }

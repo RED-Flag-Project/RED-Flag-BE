@@ -2,14 +2,15 @@ package com.redflag.redflag.analysis.repository;
 
 import com.redflag.redflag.analysis.domain.AnalysisHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 
 @Repository
-public interface AnalysisHistoryRepository extends JpaRepository<AnalysisHistory, Long> {
+public interface AnalysisHistoryRepository extends JpaRepository<AnalysisHistory, UUID> {
 
     /**
      * 특정 날짜 범위 내에서 riskScore가 특정 값 이상인 데이터 개수 조회
@@ -23,4 +24,5 @@ public interface AnalysisHistoryRepository extends JpaRepository<AnalysisHistory
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+
 }
