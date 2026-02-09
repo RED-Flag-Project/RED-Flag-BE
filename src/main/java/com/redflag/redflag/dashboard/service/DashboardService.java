@@ -1,5 +1,6 @@
 package com.redflag.redflag.dashboard.service;
 
+import com.redflag.redflag.analysis.repository.AnalysisHistoryRepository;
 import com.redflag.redflag.dashboard.dto.response.AgeDistributionApiResponse;
 import com.redflag.redflag.dashboard.dto.response.DashboardResponse;
 import com.redflag.redflag.dashboard.dto.response.GenderDistributionApiResponse;
@@ -11,6 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Comparator;
 
 @Slf4j
@@ -28,11 +32,15 @@ public class DashboardService {
     private String genderDistributionUrl;
 
     private final RestTemplate restTemplate;
+    private final AnalysisHistoryRepository analysisHistoryRepository;
 
     /**
      * 대시보드
      */
     public DashboardResponse getDashboardData() {
+        // 오늘 탐지된 건수 조회
+        DashboardResponse.TodayDetection todayDetection = getTodayDetection();
+
         // 연령대별 데이터 조회
         DashboardResponse.AgeDistribution ageDistribution = getAgeDistribution();
 
@@ -43,10 +51,29 @@ public class DashboardService {
         DashboardResponse.TotalDamageStats totalDamageStats = createMockTotalDamageStats();
 
         return new DashboardResponse(
+                todayDetection,
                 totalDamageStats,
                 ageDistribution,
                 genderDistribution
         );
+    }
+
+    /**
+     * 오늘 탐지된 건수 조회 (riskScore >= 50)
+     */
+    private DashboardResponse.TodayDetection getTodayDetection() {
+        // 오늘 00:00:00 부터 23:59:59 까지
+        LocalDateTime startOfToday = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+        LocalDateTime endOfToday = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+        
+        // riskScore가 50 이상인 오늘의 탐지 건수 조회
+        Long todayDetectedCount = analysisHistoryRepository.countByRiskScoreGreaterThanEqualAndCreatedAtBetween(
+                50, 
+                startOfToday, 
+                endOfToday
+        );
+        
+        return new DashboardResponse.TodayDetection(todayDetectedCount);
     }
 
     private DashboardResponse.AgeDistribution getAgeDistribution() {
@@ -119,10 +146,10 @@ public class DashboardService {
     // 목데이터 생성 (1차)
     private DashboardResponse.TotalDamageStats createMockTotalDamageStats() {
         return new DashboardResponse.TotalDamageStats(
-                1_234_567_890_000L, // 1조 2345억
-                15.5, // 전년 대비 15.5% 증가
-                5_432_100L, // 543만원
-                85.3 // 하루 평균 85.3건
+                1_133_000_000_000L, // 1조 1330억
+                56.1,              // 전년 대비 56.1% 증가
+                18_676L,           // 총 발생 건수
+                15.6               // 전년 대비 발생 건수
         );
     }
 
