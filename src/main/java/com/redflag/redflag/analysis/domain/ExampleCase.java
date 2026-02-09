@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "example_case")
 @Getter
@@ -16,8 +18,8 @@ import lombok.NoArgsConstructor;
 public class ExampleCase {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "case_content", columnDefinition = "TEXT")
     private String caseContent;
