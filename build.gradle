@@ -33,7 +33,7 @@ dependencies {
 	runtimeOnly 'org.postgresql:postgresql'
 
 	// pgvector를 Java에서 편하게 다루기 위한 라이브러리
-	implementation 'com.pgvector:pgvector:0.1.4'
+	implementation 'com.pgvector:pgvector:0.1.6'
 
 	// OpenAPI (Swagger)
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'

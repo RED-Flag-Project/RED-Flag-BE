@@ -9,7 +9,13 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "specific_match")
+@Table(
+        name = "specific_match",
+        indexes = {
+                @Index(name = "idx_specific_match_analysis_id", columnList = "analysis_id"),
+                @Index(name = "idx_specific_match_example_case_id", columnList = "example_case_id")
+        }
+)
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor

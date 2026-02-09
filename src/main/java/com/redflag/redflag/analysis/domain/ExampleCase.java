@@ -1,5 +1,6 @@
 package com.redflag.redflag.analysis.domain;
 
+import com.pgvector.PGvector;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,6 +25,6 @@ public class ExampleCase {
     @Column(name = "category", length = 255)
     private String category;
 
-    @Column(name = "embedding", columnDefinition = "TEXT")
-    private String embedding;
+    @Column(name = "embedding", columnDefinition = "vector(768)")
+    private PGvector embedding;
 }
