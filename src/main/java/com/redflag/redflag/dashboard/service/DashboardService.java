@@ -91,17 +91,17 @@ public class DashboardService {
                     .orElseThrow(() -> new GeneralException(ErrorStatus.DASHBOARD_AGE_LATEST_DATA_NOT_FOUND));
 
             // 전체 합계 계산
-            int total = latestData.under20() + latestData.thirties() + latestData.forties()
-                    + latestData.fifties() + latestData.sixties() + latestData.over70();
+            int total = safeInt(latestData.under20()) + safeInt(latestData.thirties()) + safeInt(latestData.forties())
+            + safeInt(latestData.fifties()) + safeInt(latestData.sixties()) + safeInt(latestData.over70());
 
             // 비율 계산
             return new DashboardResponse.AgeDistribution(
-                    calculatePercentage(latestData.under20(), total),
-                    calculatePercentage(latestData.thirties(), total),
-                    calculatePercentage(latestData.forties(), total),
-                    calculatePercentage(latestData.fifties(), total),
-                    calculatePercentage(latestData.sixties(), total),
-                    calculatePercentage(latestData.over70(), total)
+                    calculatePercentage(safeInt(latestData.under20()), total),
+                    calculatePercentage(safeInt(latestData.thirties()), total),
+                    calculatePercentage(safeInt(latestData.forties()), total),
+                    calculatePercentage(safeInt(latestData.fifties()), total),
+                    calculatePercentage(safeInt(latestData.sixties()), total),
+                    calculatePercentage(safeInt(latestData.over70()), total)
             );
 
         } catch (GeneralException e) {
@@ -127,12 +127,12 @@ public class DashboardService {
                     .orElseThrow(() -> new GeneralException(ErrorStatus.DASHBOARD_GENDER_LATEST_DATA_NOT_FOUND));
 
             // 전체 합계 계산
-            int total = latestData.male() + latestData.female();
+            int total = safeInt(latestData.male()) + safeInt(latestData.female());
 
             // 비율 계산
             return new DashboardResponse.GenderDistribution(
-                    calculatePercentage(latestData.male(), total),
-                    calculatePercentage(latestData.female(), total)
+                    calculatePercentage(safeInt(latestData.male()), total),
+                    calculatePercentage(safeInt(latestData.female()), total)
             );
 
         } catch (GeneralException e) {
@@ -159,5 +159,10 @@ public class DashboardService {
             return 0.0;
         }
         return Math.round((value * 100.0 / total) * 10.0) / 10.0; // 소수점 첫째자리까지
+    }
+
+    // safeInt 도입
+    private int safeInt(Integer value) {
+        return value == null ? 0 : value;
     }
 }
