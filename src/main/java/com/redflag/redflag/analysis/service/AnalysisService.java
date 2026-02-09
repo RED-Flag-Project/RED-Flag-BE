@@ -109,7 +109,7 @@ public class AnalysisService {
                 .rawText(mlResult.getOcrText())
                 .riskScore(mlResult.getRiskScore())
                 .riskLevel(mlResult.getRiskLevel())
-                .summary(mlResult.getDescription())
+                .description(mlResult.getDescription())
                 .build();
         
         return analysisHistoryRepository.save(analysisHistory);

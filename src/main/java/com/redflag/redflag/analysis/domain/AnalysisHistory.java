@@ -41,8 +41,8 @@ public class AnalysisHistory {
     @Column(name = "risk_level", length = 255)
     private String riskLevel;
 
-    @Column(name = "summary", columnDefinition = "TEXT")
-    private String summary;
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
