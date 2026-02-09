@@ -45,144 +45,24 @@ public class SecurityInfoService {
     private static final int VIDEO_LIMIT = 5;
 
     /**
-     * 보안 정보 조회
+     * 보안 정보 조회 (메인 대시보드용 2건)
      */
     public SecurityInfoResponse getSecurityInfo() {
-        // 1. 보안 뉴스 조회 (Google RSS)
-        List<SecurityInfoResponse.SecurityNews> securityNews = getSecurityNews();
+        List<SecurityInfoResponse.SecurityNews> securityNews = fetchNewsFromRss(NEWS_LIMIT).stream()
+                .map(news -> new SecurityInfoResponse.SecurityNews(
+                        news.id(), news.source(), news.title(), news.summary(), news.publishedAt(), news.linkUrl()))
+                .toList();
 
-        // 2. 유튜브 영상 조회
         SecurityInfoResponse.YoutubeInfo youtubeInfo = getYoutubeInfo();
-
         return new SecurityInfoResponse(securityNews, youtubeInfo);
     }
 
     /**
-     * 보안 뉴스 목록 조회 (10건)
+     * 보안 뉴스 목록 조회 (목록 페이지용 10건)
      */
     public SecurityNewsListResponse getSecurityNewsList() {
-        List<SecurityNewsListResponse.SecurityNews> newsList = getSecurityNewsWithLimit(NEWS_LIST_LIMIT);
+        List<SecurityNewsListResponse.SecurityNews> newsList = fetchNewsFromRss(NEWS_LIST_LIMIT);
         return new SecurityNewsListResponse(newsList);
-    }
-
-    /**
-     * Google RSS에서 보안 뉴스 조회
-     */
-    private List<SecurityInfoResponse.SecurityNews> getSecurityNews() {
-        try {
-            List<SecurityInfoResponse.SecurityNews> newsList = new ArrayList<>();
-
-            // RSS 피드 파싱
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-
-            URL url = new URL(rssUrl);
-            InputStream inputStream = url.openStream();
-            Document doc = builder.parse(inputStream);
-            doc.getDocumentElement().normalize();
-
-            // item 태그 추출
-            NodeList itemList = doc.getElementsByTagName("item");
-
-            int count = 0;
-            for (int i = 0; i < itemList.getLength() && count < NEWS_LIMIT; i++) {
-                Element item = (Element) itemList.item(i);
-
-                String title = getTagValue("title", item);
-                String link = getTagValue("link", item);
-                String pubDate = getTagValue("pubDate", item);
-                String description = getTagValue("description", item);
-
-                // 뉴스 소스 추출 (title에서 - 앞부분)
-                String source = extractSource(title);
-
-                // 날짜 포맷 변환 (RFC 822 -> yyyy.MM.dd)
-                String formattedDate = formatDate(pubDate);
-
-                // 요약문 정리 (HTML 태그 제거)
-                String summary = cleanHtml(description);
-
-                newsList.add(new SecurityInfoResponse.SecurityNews(
-                        "news_" + String.format("%03d", i + 1),
-                        source,
-                        cleanTitle(title),
-                        summary,
-                        formattedDate,
-                        link
-                ));
-
-                count++;
-            }
-
-            inputStream.close();
-            return newsList;
-
-        } catch (GeneralException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("보안 뉴스 조회 실패", e);
-            throw new GeneralException(ErrorStatus.SECURITY_NEWS_FETCH_ERROR);
-        }
-    }
-
-    /**
-     * Google RSS에서 보안 뉴스 조회 (제한 개수 지정)
-     */
-    private List<SecurityNewsListResponse.SecurityNews> getSecurityNewsWithLimit(int limit) {
-        try {
-            List<SecurityNewsListResponse.SecurityNews> newsList = new ArrayList<>();
-
-            // RSS 피드 파싱
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-
-            URL url = new URL(rssUrl);
-            InputStream inputStream = url.openStream();
-            Document doc = builder.parse(inputStream);
-            doc.getDocumentElement().normalize();
-
-            // item 태그 추출
-            NodeList itemList = doc.getElementsByTagName("item");
-
-            int count = 0;
-            for (int i = 0; i < itemList.getLength() && count < limit; i++) {
-                Element item = (Element) itemList.item(i);
-
-                String title = getTagValue("title", item);
-                String link = getTagValue("link", item);
-                String pubDate = getTagValue("pubDate", item);
-                String description = getTagValue("description", item);
-
-                // 뉴스 소스 추출 (title에서 - 앞부분)
-                String source = extractSource(title);
-
-                // 날짜 포맷 변환 (RFC 822 -> yyyy.MM.dd)
-                String formattedDate = formatDate(pubDate);
-
-                // 요약문 정리 (HTML 태그 제거)
-                String summary = cleanHtml(description);
-
-                newsList.add(new SecurityNewsListResponse.SecurityNews(
-                        "news_" + String.format("%03d", i + 1),
-                        source,
-                        cleanTitle(title),
-                        summary,
-                        formattedDate,
-                        link
-                ));
-
-                count++;
-            }
-
-            inputStream.close();
-            return newsList;
-
-        } catch (GeneralException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("보안 뉴스 목록 조회 실패", e);
-            throw new GeneralException(ErrorStatus.SECURITY_NEWS_FETCH_ERROR);
-        }
     }
 
     /**
@@ -307,5 +187,43 @@ public class SecurityInfoService {
         }
 
         return text;
+    }
+
+    /**
+     * 공통 로직: RSS 피드에서 뉴스 데이터를 파싱하여 리스트로 반환
+     */
+    private List<SecurityNewsListResponse.SecurityNews> fetchNewsFromRss(int limit) {
+        try (InputStream inputStream = new URL(rssUrl).openStream()) {
+            List<SecurityNewsListResponse.SecurityNews> newsList = new ArrayList<>();
+
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(inputStream);
+            doc.getDocumentElement().normalize();
+
+            NodeList itemList = doc.getElementsByTagName("item");
+
+            for (int i = 0; i < itemList.getLength() && i < limit; i++) {
+                Element item = (Element) itemList.item(i);
+
+                String title = getTagValue("title", item);
+                String link = getTagValue("link", item);
+                String pubDate = getTagValue("pubDate", item);
+                String description = getTagValue("description", item);
+
+                newsList.add(new SecurityNewsListResponse.SecurityNews(
+                        "news_" + String.format("%03d", i + 1),
+                        extractSource(title),
+                        cleanTitle(title),
+                        cleanHtml(description), // 여기서 summary 처리
+                        formatDate(pubDate),
+                        link
+                ));
+            }
+            return newsList;
+        } catch (Exception e) {
+            log.error("RSS 뉴스 파싱 중 에러 발생", e);
+            throw new GeneralException(ErrorStatus.SECURITY_NEWS_FETCH_ERROR);
+        }
     }
 }
