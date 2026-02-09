@@ -62,15 +62,15 @@ public class DashboardService {
      * 오늘 탐지된 건수 조회 (riskScore >= 50)
      */
     private DashboardResponse.TodayDetection getTodayDetection() {
-        // 오늘 00:00:00 부터 23:59:59 까지
+        // 오늘 00:00:00 부터 내일 00:00:00 미만까지
         LocalDateTime startOfToday = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
-        LocalDateTime endOfToday = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
-        
+        LocalDateTime startOfTomorrow = LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIN);
+
         // riskScore가 50 이상인 오늘의 탐지 건수 조회
         Long todayDetectedCount = analysisHistoryRepository.countByRiskScoreGreaterThanEqualAndCreatedAtBetween(
-                50, 
-                startOfToday, 
-                endOfToday
+                50,
+                startOfToday,
+                startOfTomorrow
         );
         
         return new DashboardResponse.TodayDetection(todayDetectedCount);
