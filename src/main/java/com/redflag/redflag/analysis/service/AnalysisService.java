@@ -22,6 +22,7 @@ public class AnalysisService {
     
     private final S3Service s3Service;
     private final MlService mlService;
+    private final GeminiService geminiService;
     private final UserRepository userRepository;
     private final AnalysisHistoryRepository analysisHistoryRepository;
     private final AnalysisDetailRepository analysisDetailRepository;
@@ -188,14 +189,25 @@ public class AnalysisService {
                     String.format("%.4f", distance),
                     String.format("%.2f%%", similarity * 100));
             
-            // highlightTextUser: AnalysisDetail의 detectedSentence 사용
+            // highlightTextUser: AnalysisDetail의 keyword 사용
             String highlightUser = details.stream()
-                    .findFirst()
+                    .map(AnalysisDetail::getKeyword)
+                    .filter(k -> k != null && !k.isEmpty())
+                    .collect(Collectors.joining(", "));
+
+            // detectedSentences 수집 (Gemini에 추가 컨텍스트 제공)
+            List<String> detectedSentences = details.stream()
                     .map(AnalysisDetail::getDetectedSentence)
-                    .orElse(null);
-            
+                    .filter(s -> s != null && !s.isEmpty())
+                    .toList();
+
             // highlightTextCase: case_content에서 키워드 찾기
-            String highlightCase = extractHighlight(caseContent, details);
+            String highlightCase = geminiService.extractSimilarKeywords(
+                    caseContent,
+                    highlightUser,
+                    detectedSentences);
+            
+            log.info("Gemini 추출 결과: {}", highlightCase);
             
             ExampleCase exampleCaseRef = ExampleCase.builder()
                     .id(exampleId)
@@ -217,38 +229,7 @@ public class AnalysisService {
         log.info("유사 사례 매칭 완료: {}개 저장됨", matches.size());
     }
     
-    // ExampleCase의 case_content에서 하이라이트할 텍스트 추출
-    private String extractHighlight(String caseContent, List<AnalysisDetail> details) {
-        // AnalysisDetail의 키워드 수집
-        List<String> keywords = details.stream()
-                .map(AnalysisDetail::getKeyword)
-                .filter(k -> k != null && !k.isEmpty())
-                .toList();
-        
-        if (keywords.isEmpty()) {
-            // 키워드 없으면 앞부분만
-            return caseContent.substring(0, Math.min(30, caseContent.length()));
-        }
-        
-        // caseContent에서 키워드 포함된 문장 찾기
-        for (String keyword : keywords) {
-            if (caseContent.contains(keyword)) {
-                // 키워드 포함된 부분 추출 (앞뒤 10자)
-                int idx = caseContent.indexOf(keyword);
-                int start = Math.max(0, idx - 10);
-                int end = Math.min(caseContent.length(), idx + keyword.length() + 10);
-                return caseContent.substring(start, end);
-            }
-        }
-        
-        // 매칭 안 되면 앞부분 30자
-        return caseContent.substring(0, Math.min(30, caseContent.length()));
-    }
-    
-    /**
-     * 분석 결과 상세 조회
-     * AnalysisHistory + AnalysisDetail + SpecificMatch(ExampleCase) 결합
-     */
+    // 분석 결과 상세 조회
     @Transactional(readOnly = true)
     public AnalysisDetailResponse getAnalysisDetail(String userUuidStr, String analysisIdStr) {
         log.info("분석 결과 상세 조회 - 사용자: {}, analysisId: {}", userUuidStr, analysisIdStr);
