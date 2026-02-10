@@ -29,15 +29,18 @@ public class AnalysisController {
     )
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<AnalysisUploadResponse> uploadAndAnalyze(
-            @Parameter(description = "사용자 UUID", required = true)
-            @RequestHeader("User-UUID") String userUuid,
+            //@Parameter(description = "사용자 UUID", required = true)
+            //@RequestHeader("User-UUID") String userUuid,
+            // 1. 헤더 대신 쿠키에서 가져오기
+            @Parameter(hidden = true)
+            @CookieValue(name = "user_id") String userId,
             
             @Parameter(description = "분석할 이미지 파일 (JPG, PNG)", required = true)
             @RequestPart("image") MultipartFile image
     ) {
-        log.info("이미지 업로드 요청 - 사용자: {}, 파일명: {}", userUuid, image.getOriginalFilename());
+        log.info("이미지 업로드 요청 - 사용자: {}, 파일명: {}", userId, image.getOriginalFilename());
         
-        AnalysisUploadResponse response = analysisService.uploadAndAnalyze(userUuid, image);
+        AnalysisUploadResponse response = analysisService.uploadAndAnalyze(userId, image);
         return ApiResponse.onSuccess(response);
     }
     
