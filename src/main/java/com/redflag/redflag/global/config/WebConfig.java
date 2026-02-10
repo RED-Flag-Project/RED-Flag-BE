@@ -13,7 +13,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins(
                         "http://localhost:3000",           // React 개발 서버
                         "http://localhost:5173",           // Vite 개발 서버
-                        "https://yourdomain.com"           // 프로덕션 도메인 (수정 필요)
+                        "https://cdxfgv2my3.ap-northeast-1.awsapprunner.com"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
