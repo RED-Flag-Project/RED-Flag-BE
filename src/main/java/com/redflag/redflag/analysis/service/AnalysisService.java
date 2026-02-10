@@ -188,11 +188,11 @@ public class AnalysisService {
                     String.format("%.4f", distance),
                     String.format("%.2f%%", similarity * 100));
             
-            // highlightTextUser: AnalysisDetail의 detectedSentence 사용
+            // highlightTextUser: AnalysisDetail의 keyword 사용
             String highlightUser = details.stream()
-                    .findFirst()
-                    .map(AnalysisDetail::getDetectedSentence)
-                    .orElse(null);
+                    .map(AnalysisDetail::getKeyword)
+                    .filter(k -> k != null && !k.isEmpty())
+                    .collect(Collectors.joining(", "));
             
             // highlightTextCase: case_content에서 키워드 찾기
             String highlightCase = extractHighlight(caseContent, details);
