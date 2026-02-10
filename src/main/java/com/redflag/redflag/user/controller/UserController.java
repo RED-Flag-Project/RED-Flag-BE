@@ -103,7 +103,9 @@ public class UserController {
 
         // HTTPS인 경우에만 Secure 설정
         // 로컬(HTTP)에서는 false, 배포(HTTPS)에서는 true로 자동 전환됩니다.
-        boolean isHttps = request.isSecure();
+        // 수정 후
+        boolean isHttps = request.isSecure() ||
+                "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
         cookie.setSecure(isHttps);
 
         // SameSite 설정
