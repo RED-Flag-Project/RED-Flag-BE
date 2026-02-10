@@ -50,15 +50,15 @@ public class AnalysisController {
     )
     @GetMapping("/{analysisId}")
     public ApiResponse<AnalysisDetailResponse> getAnalysisDetail(
-            @Parameter(description = "사용자 UUID", required = true)
-            @RequestHeader("User-UUID") String userUuid,
+            @Parameter(hidden = true)
+            @CookieValue(name = "user_id") String userId,
             
             @Parameter(description = "분석 ID", required = true)
             @PathVariable("analysisId") String analysisId
     ) {
-        log.info("분석 결과 상세 조회 요청 - 사용자: {}, analysisId: {}", userUuid, analysisId);
+        log.info("분석 결과 상세 조회 요청 - 사용자: {}, analysisId: {}", userId, analysisId);
         
-        AnalysisDetailResponse response = analysisService.getAnalysisDetail(userUuid, analysisId);
+        AnalysisDetailResponse response = analysisService.getAnalysisDetail(userId, analysisId);
         return ApiResponse.onSuccess(response);
     }
 }
