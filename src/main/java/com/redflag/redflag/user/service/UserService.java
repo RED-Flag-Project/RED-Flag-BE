@@ -1,7 +1,7 @@
 package com.redflag.redflag.user.service;
 
 import com.redflag.redflag.analysis.domain.User;
-import com.redflag.redflag.user.repository.UserRepository;
+import com.redflag.redflag.analysis.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
