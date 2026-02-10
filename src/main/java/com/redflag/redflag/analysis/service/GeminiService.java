@@ -26,8 +26,8 @@ public class GeminiService {
             String userKeywords,
             List<String> detectedSentences) {
 
-        // Gemini 2.5 Flash
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey;
+        // Gemini 2.5 Flash Lite
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" + apiKey;
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -92,7 +92,7 @@ public class GeminiService {
                     (List<Map<String, Object>>) content.get("parts");
             String text = (String) parts.get(0).get("text");
 
-            log.info("Gemini 2.5 키워드 추출 완료: {}", text.trim());
+            log.info("Gemini 2.5 light 키워드 추출 완료: {}", text.trim());
             return text.trim();
 
         } catch (Exception e) {
