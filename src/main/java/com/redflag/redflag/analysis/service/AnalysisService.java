@@ -1,8 +1,7 @@
 package com.redflag.redflag.analysis.service;
 
 import com.redflag.redflag.analysis.domain.*;
-import com.redflag.redflag.analysis.dto.AnalysisUploadResponse;
-import com.redflag.redflag.analysis.dto.MlAnalysisResponse;
+import com.redflag.redflag.analysis.dto.*;
 import com.redflag.redflag.analysis.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +13,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -243,5 +243,64 @@ public class AnalysisService {
         
         // 매칭 안 되면 앞부분 30자
         return caseContent.substring(0, Math.min(30, caseContent.length()));
+    }
+    
+    /**
+     * 분석 결과 상세 조회
+     * AnalysisHistory + AnalysisDetail + SpecificMatch(ExampleCase) 결합
+     */
+    @Transactional(readOnly = true)
+    public AnalysisDetailResponse getAnalysisDetail(String userUuidStr, String analysisIdStr) {
+        log.info("분석 결과 상세 조회 - 사용자: {}, analysisId: {}", userUuidStr, analysisIdStr);
+        
+        UUID userUuid = UUID.fromString(userUuidStr);
+        UUID analysisId = UUID.fromString(analysisIdStr);
+        
+        // 1. AnalysisHistory 조회 (사용자 검증 포함)
+        AnalysisHistory analysisHistory = analysisHistoryRepository.findById(analysisId)
+                .orElseThrow(() -> new IllegalArgumentException("분석 결과를 찾을 수 없습니다."));
+        
+        // 2. 사용자 권한 검증
+        if (!analysisHistory.getUser().getId().equals(userUuid)) {
+            throw new IllegalArgumentException("해당 분석 결과에 접근 권한이 없습니다.");
+        }
+        
+        // 3. AnalysisDetail 조회 (심리 조작 패턴들)
+        List<AnalysisDetail> details = analysisDetailRepository.findByAnalysisHistory(analysisHistory);
+        List<PsychologicalPatternDto> psychologicalPatterns = details.stream()
+                .map(detail -> PsychologicalPatternDto.builder()
+                        .patternType(detail.getPatternType())
+                        .detectedSentence(detail.getDetectedSentence())
+                        .keyword(detail.getKeyword())
+                        .patternScore(detail.getPatternScore())
+                        .build())
+                .collect(Collectors.toList());
+        
+        // 4. SpecificMatch 조회 (유사 사례들) - embedding 제외한 필드만 조회
+        List<Object[]> matchResults = specificMatchRepository.findMatchDetailsWithoutEmbedding(analysisId);
+        List<SimilarCaseDto> similarCases = matchResults.stream()
+                .map(row -> SimilarCaseDto.builder()
+                        .matchedRank((Integer) row[0])
+                        .caseId(((UUID) row[1]).toString())
+                        .category((String) row[2])
+                        .content((String) row[3])
+                        .similarityScore((BigDecimal) row[4])
+                        .highlightUser((String) row[5])
+                        .highlightCase((String) row[6])
+                        .build())
+                .collect(Collectors.toList());
+        
+        // 5. 응답 생성
+        return AnalysisDetailResponse.builder()
+                .analysisId(analysisHistory.getId().toString())
+                .imageUrl(analysisHistory.getImageUrl())
+                .rawText(analysisHistory.getRawText())
+                .riskScore(analysisHistory.getRiskScore())
+                .riskLevel(analysisHistory.getRiskLevel())
+                .description(analysisHistory.getDescription())
+                .psychologicalPatterns(psychologicalPatterns)
+                .similarCases(similarCases)
+                .createdAt(analysisHistory.getCreatedAt())
+                .build();
     }
 }
